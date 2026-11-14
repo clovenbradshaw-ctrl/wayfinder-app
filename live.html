@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b6bcb">
+<meta name="referrer" content="no-referrer">
+<title>Live location | Wayfinder</title><link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<style>
+  :root { --ink:#1b2430; --muted:#5d6b7a; --line:#dde3ea; --accent:#0b6bcb; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; font: 15px/1.4 system-ui, -apple-system, Segoe UI, sans-serif; color: var(--ink); }
+  #map { position: fixed; inset: 0; }
+  #bar { position: fixed; left: 10px; right: 10px; bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 1000; background: #fff; border-radius: 14px; padding: 12px 14px; box-shadow: 0 4px 18px rgba(0,0,0,.28); display: grid; gap: 2px; }
+  #t { font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 8px; } #s { color: var(--muted); font-size: 13px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #2e9e44; flex: none; box-shadow: 0 0 0 0 rgba(46,158,68,.6); animation: pulse 1.8s infinite; }
+  .dot.stale { background: #e6b800; animation: none; } .dot.off { background: #9aa6b2; animation: none; }
+  @keyframes pulse { 70% { box-shadow: 0 0 0 10px rgba(46,158,68,0); } 100% { box-shadow: 0 0 0 0 rgba(46,158,68,0); } }
+  .me { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); border: 3px solid #fff; box-shadow: 0 1px 6px rgba(0,0,0,.5); }
+  @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="bar"><div id="t"><span class="dot off" id="dot"></span><span id="tt">Connecting…</span></div><div id="s"></div></div>
+<script src="vendor/leaflet/leaflet.js"></script>
+<script>
+// Watches one live-location session. The session id is in the address after the # so it is never sent to any server as part of a page request.
+const RELAY = location.hostname === 'collab.hyphae.social' ? new URL('../wayfinder-relay/', location.href).href : 'https://collab.hyphae.social/wayfinder-relay/';
+const token = (location.hash.match(/t=([A-Za-z0-9_-]{10,64})/) || [])[1];
+const $ = id => document.getElementById(id);
+const map = L.map('map', { zoomControl: true }).setView([36.1627, -86.7816], 13);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+let marker = null, line = null, fitted = false, ended = false;
+const ago = s => s < 5 ? 'just now' : s < 90 ? s + ' s ago' : Math.round(s / 60) + ' min ago';
+const clock = ms => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+function say(title, sub, cls) { $('tt').textContent = title; $('s').textContent = sub || ''; $('dot').className = 'dot' + (cls ? ' ' + cls : ''); }
+async function poll() {
+  if (ended) return;
+  if (!token) { ended = true; return say('No link', 'This address is missing its share code. Ask for the link again.', 'off'); }
+  try {
+    const r = await fetch(RELAY + 'share/' + token, { cache: 'no-store' });
+    if (r.status === 404) { ended = true; return say('Sharing has ended', 'The link expired or they stopped sharing.', 'off'); }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const v = await r.json(), p = v.last, left = Math.max(0, Math.round((v.until - v.now) / 60000));
+    if (!p) return say('Waiting for the first position…', `Link works until ${clock(v.until)}.`, 'stale');
+    const age = Math.round((v.now - p.t) / 1000), ll = [p.lat, p.lon], stale = age > 45;
+    if (!marker) marker = L.marker(ll, { icon: L.divIcon({ className: '', iconSize: [22, 22], iconAnchor: [11, 11], html: '<div class="me"></div>' }) }).addTo(map); else marker.setLatLng(ll);
+    const tr = (v.trail || []).map(x => [x[0], x[1]]); if (tr.length > 1) { if (!line) line = L.polyline(tr, { color: '#0b6bcb', weight: 4, opacity: .6 }).addTo(map); else line.setLatLngs(tr); }
+    if (!fitted) { map.setView(ll, 16); fitted = true; } else if (!map.getBounds().pad(-0.2).contains(ll)) map.panTo(ll);
+    const mph = p.speed != null && p.speed > 0.8 ? ` · ${Math.round(p.speed * 2.237)} mph` : '';
+    say(stale ? 'Last seen ' + ago(age) : 'Live', (stale ? 'Their phone may be locked or offline. ' : '') + `Updated ${ago(age)}${mph}${p.acc != null ? ' · within ' + p.acc + ' m' : ''} · link works ${left} more min`, stale ? 'stale' : '');
+  } catch (e) { say('Cannot reach the server', e.message + '. Trying again.', 'stale'); }
+}
+poll(); setInterval(poll, 4000);
+</script>
+</body>
+</html>

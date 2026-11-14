@@ -1,0 +1,20 @@
+{
+ "davidson.pmtiles": {
+  "bytes": 22734896,
+  "sha256": "3849a35825190f8b7cf14e91184f6d7ee6639b9a07fa0b4b12763f991bf75cb3",
+  "build": "20261112",
+  "maxzoom": 15,
+  "bbox": [
+   -87.06,
+   35.96,
+   -86.51,
+   36.42
+  ]
+ },
+ "places.json": {
+  "bytes": 1110983,
+  "sha256": "5008b77b581be3d0ce27a5d33af17e5c80c2e529a973180ed23982261e3fb0e0",
+  "n": 19940
+ },
+ "generated": "2026-11-13T06:35:52Z"
+}

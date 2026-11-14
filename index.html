@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b6bcb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icon.svg"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Wayfinder</title>
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <aside id="sheet">
+    <div id="grab" role="button" aria-label="Resize panel" tabindex="0"><span></span></div>
+    <header>
+      <h1>Wayfinder</h1>
+      <div class="sub">Find where you are, then get directions.</div>
+      <button id="install" data-ic="download-simple"> Install app</button> <a id="apklink" class="sub" href="download.html" hidden>Get the Android app</a>
+    </header>
+    <div class="panel">
+      <label for="from" class="l-start">Start</label>
+      <div class="row" id="startbox">
+        <div class="field"><input id="from" type="text" autocomplete="off" placeholder="My location, or type a place"><ul class="sugg" id="sg-from"></ul></div>
+        <button id="locate" title="Use my location" data-ic="crosshair-simple"> Locate</button>
+      </div>
+      <div id="startrow"><button id="startline" type="button" data-ic="map-pin">From <b id="starttxt">finding you…</b> <span>Change</span></button><button id="usegps" type="button" data-ic="crosshair-simple"> Use my location</button></div>
+      <label for="to" class="l-dest">Destination</label>
+      <div class="row" id="destbox">
+        <div class="field"><input id="to" type="text" autocomplete="off" placeholder="Where to?"><ul class="sugg" id="sg-to"></ul></div>
+        <button id="swap" title="Swap start and destination" aria-label="Swap start and destination" data-ic="arrows-down-up"></button>
+      </div>
+      <div id="chips">
+        <button id="busbtn" data-ic="bus"> Buses</button>
+        <button data-c="Coffee" data-ic="coffee"> Coffee</button><button data-c="Food" data-ic="fork-knife"> Food</button><button data-c="Gas" data-ic="gas-pump"> Gas</button>
+        <button data-c="Pharmacy" data-ic="pill"> Pharmacy</button><button data-c="Hospital" data-ic="hospital"> Hospital</button><button data-c="Parking" data-ic="letter-circle-p"> Parking</button>
+      </div>
+      <div class="modes" id="modes">
+        <button data-m="routed-car" class="on" data-ic="car"> Drive</button>
+        <button data-m="routed-bike" data-ic="bicycle"> Bike</button>
+        <button data-m="routed-foot" data-ic="person-simple-walk"> Walk</button>
+      </div>
+      <button class="primary" id="go">Get directions</button>
+      <details id="more" class="more"><summary><span class="mt">Settings and more</span><span class="sub mh">traffic, offline map, voice, sharing, avatar</span></summary>
+        <div class="morebody">
+      <details id="tbox" class="pnl"><summary><span data-ic="traffic-signal"> Bus-based traffic</span><span id="tpill" class="pill off">Off</span></summary>
+        <div class="tbody">
+          <div class="tcard">
+            <div id="tstat">Starting up.</div>
+            <div class="tlegend" aria-hidden="true"><span>Slow</span><i></i><span>Free flow</span></div>
+            <label class="switch"><input type="checkbox" id="t-show" checked><span class="sl"></span><span>Show on map</span></label>
+          </div>
+          <div class="sub">Estimated by timing WeGo buses from one stop to the next and comparing with each stretch's usual free-flow time. Time spent at stops is never counted. It only covers bus corridors; other roads show nothing, and a stretch needs 25 timed runs before it counts.</div>
+          <details id="tadv"><summary>Advanced</summary>
+            <div class="tbody">
+              <input id="t-url" type="text" placeholder="https://your-server/traffic.json" aria-label="Traffic data address">
+              <div class="row"><button id="t-save">Use this address</button><button id="t-reset">Use Wayfinder API</button><button id="t-sample" title="Preview the overlay with fake data">Load sample</button></div>
+            </div></details>
+        </div></details>
+      <details id="obox" class="pnl"><summary><span data-ic="map-trifold"> Offline map</span><span id="opill" class="pill off">Not saved</span></summary>
+        <div class="tbody">
+          <div class="tcard">
+            <div id="ostat">Save Davidson County to this device so the map and search keep working without a connection.</div>
+            <div id="obar" hidden><i></i></div>
+            <div class="row"><button id="o-dl" class="primary" data-ic="download-simple"> Download Davidson County</button><button id="o-rm" hidden>Remove</button></div>
+            <label class="switch"><input type="checkbox" id="o-use"><span class="sl"></span><span>Use the offline map even when online</span></label>
+          </div>
+          <div class="sub">About 24 MB: a vector map of Davidson County and about 20,000 named places and streets. Directions and live buses still need a connection. Map data from OpenStreetMap contributors.</div>
+        </div></details>
+      <details id="abox" class="pnl"><summary><span data-ic="user-circle"> Avatar</span><span id="apill" class="pill off">Arrow</span></summary>
+        <div class="tbody">
+          <div id="achoices" role="radiogroup" aria-label="Avatar">
+            <button type="button" role="radio" data-av="arrow"><span class="ap"></span><span>Arrow</span></button>
+            <button type="button" role="radio" data-av="clip"><span class="ap"></span><span>Paperclip</span></button>
+            <button type="button" role="radio" data-av="custom"><span class="ap"></span><span>My image</span></button>
+          </div>
+          <label class="switch"><input type="checkbox" id="a-rot"><span class="sl"></span><span>Turn with my direction (for top-down vehicles)</span></label>
+          <input type="file" id="a-file" accept="image/*" hidden>
+          <div class="sub">Your avatar marks where you are on the map and keeps you company on the bus. "My image" is shrunk and kept on this device only.</div>
+        </div></details>
+      <details id="sbox" class="pnl"><summary><span data-ic="share-network"> Share my location</span><span id="spill" class="pill off">Off</span></summary>
+        <div class="tbody">
+          <div class="tcard">
+            <div id="sstat">Send someone a link that shows where you are on a map until it expires.</div>
+            <label id="s-len" class="sel">Share for <select id="s-min"><option value="30">30 minutes</option><option value="60" selected>1 hour</option><option value="120">2 hours</option><option value="240">4 hours</option><option value="480">8 hours (longest)</option></select></label>
+            <div class="row"><button id="s-go" class="primary" data-ic="share-network"> Start sharing</button><button id="s-ext" hidden>Add 1 hour</button><button id="s-stop" hidden>Stop sharing</button></div>
+            <div id="slink" hidden><input id="s-url" type="text" readonly aria-label="Share link"><div class="row"><button id="s-copy" data-ic="copy"> Copy</button><button id="s-send" data-ic="paper-plane-tilt"> Send link</button></div></div>
+          </div>
+          <div class="sub">Anyone with the link can see where you are until it expires (8 hours at most) or you stop. Positions are held only in memory on our server and are wiped when sharing ends. For someone you want to share with for good, use People below. In a browser it only sends while this page is open with the screen on; the Android app keeps sending with the screen off.</div>
+        </div></details>
+      <details id="lbox" class="pnl"><summary><span data-ic="images"> Sprite library</span><span id="lpill" class="pill off">Free</span></summary>
+        <div class="tbody">
+          <div id="ltabs" role="tablist"><button type="button" data-tab="free" class="on">Free</button><button type="button" data-tab="private">Private</button></div>
+          <input id="l-q" type="text" placeholder="Search sprites (car, red, robot)" aria-label="Search sprites" autocomplete="off" autocapitalize="off">
+          <div id="l-key" hidden>
+            <div class="sub">The private library needs your key. It is stored only in this browser.</div>
+            <div class="row"><input id="l-keyin" type="text" placeholder="Paste your key" aria-label="Private library key" autocomplete="off" autocapitalize="off" spellcheck="false"><button id="l-keysave" type="button" class="primary">Save</button></div>
+          </div>
+          <div id="l-grid"></div>
+          <div id="l-note" class="sub"></div>
+        </div></details>
+      <details id="pbox" class="pnl"><summary><span data-ic="users"> People</span><span id="ppill" class="pill off">None</span></summary>
+        <div class="tbody">
+          <div class="tcard">
+            <div class="sub">Connect with someone you trust by trading a one-time code. Once connected, each of you can switch on sharing your live location with the other, for as long as you like, and switch it off any time. The server keeps only the connection, never where you were.</div>
+            <label class="sel">Your name <input id="p-me" type="text" maxlength="30" placeholder="What they will see" autocomplete="off"></label>
+            <label class="sel">Nickname for them <input id="p-nick" type="text" maxlength="30" placeholder="Required. Only you see this, so you know who it is" autocomplete="off"></label>
+            <div class="row" id="p-start"><button id="p-make" class="primary" data-ic="key"> Make a code</button><button id="p-enter" data-ic="paper-plane-tilt"> Enter a code</button></div>
+            <div id="p-code" hidden><div class="bigcode" id="p-code-text"></div><div class="sub" id="p-code-sub"></div><button id="p-code-cancel" type="button">Cancel</button></div>
+            <div id="p-join" hidden><input id="p-join-code" type="text" maxlength="9" autocomplete="off" autocapitalize="characters" placeholder="ABCD-EFGH" aria-label="Connection code"><div class="row"><button id="p-join-go" class="primary" type="button">Connect</button><button id="p-join-cancel" type="button">Cancel</button></div></div>
+            <div id="p-note" class="note"></div>
+          </div>
+          <div id="p-list"></div>
+        </div></details>
+      <details id="vbox" class="pnl"><summary><span data-ic="shield-check"> Secure storage and recovery</span><span id="vpill" class="pill off">Not set up</span></summary>
+        <div class="tbody">
+          <div class="tcard">
+            <div id="vstat"></div>
+            <button id="v-setup" class="primary" type="button">Set up now</button>
+            <div id="v-rec" hidden>
+              <div class="sub">Optional. Add an email so a lost phone does not lose your connections. Choose a recovery passphrase only you know. We cannot reset it, and without it nothing can be recovered.</div>
+              <div id="v-rec-form"><input id="v-email" type="email" autocomplete="email" placeholder="Email for recovery" aria-label="Email for recovery"><input id="v-pass" type="password" autocomplete="new-password" placeholder="Recovery passphrase (10+ characters)" aria-label="Recovery passphrase"><button id="v-rec-go" type="button">Send verification email</button></div>
+              <div id="v-rec-wait" hidden><button id="v-rec-done" class="primary" type="button">I verified my email</button></div>
+              <div id="v-note" class="note"></div>
+            </div>
+          </div>
+          <details id="v-restore"><summary>Restore on this phone</summary>
+            <div class="tbody"><div class="sub">Lost your phone? Enter the recovery email and passphrase. Your nicknames and connections come back on this phone.</div>
+              <input id="v-remail" type="email" autocomplete="email" placeholder="Recovery email" aria-label="Recovery email"><input id="v-rpass" type="password" autocomplete="off" placeholder="Recovery passphrase" aria-label="Recovery passphrase">
+              <button id="v-restore-go" type="button">Send verification email</button><div id="v-restore-wait" hidden><button id="v-restore-done" class="primary" type="button">I verified my email</button></div><div id="v-rnote" class="note"></div></div></details>
+          <div class="sub">Saved encrypted on this phone before it is sent. The server only ever holds scrambled text, and the key stays here. Needs a connection to hyphae.social.</div>
+        </div></details>
+      <details id="vcbox" class="pnl"><summary><span data-ic="speaker-high"> Voice guidance</span><span id="vcpill" class="pill live">On</span></summary>
+        <div class="tbody"><div class="tcard">
+          <label class="switch"><input type="checkbox" id="vc-on" checked><span class="sl"></span><span>Speak the directions</span></label>
+          <label class="switch"><input type="checkbox" id="vc-streets" checked><span class="sl"></span><span>Say street names when turning</span></label>
+          <div class="vc-row"><span>Wording</span><div class="seg" id="vc-style"><button type="button" data-v="auto">Auto</button><button type="button" data-v="short">Short</button><button type="button" data-v="full">Full</button></div></div>
+          <div class="sub" id="vc-eg"></div>
+          <div class="vc-row" id="vc-music-row"><span>Music and podcasts</span><div class="seg" id="vc-music"><button type="button" data-v="duck">Lower</button><button type="button" data-v="pause">Pause</button><button type="button" data-v="mix">Talk over</button></div></div>
+          <div class="sub" id="vc-music-note"></div>
+          <div class="vc-learn" id="vc-learn"><b>What it has learned from your drives</b>
+            <div class="sub" id="vc-learned">Nothing yet.</div>
+            <div class="sub" id="vc-where"></div>
+            <button type="button" id="vc-forget">Forget what it learned</button></div>
+        </div></div></details>
+      <details id="nvbox" class="pnl"><summary><span data-ic="cube"> 3D navigation</span><span id="nvpill" class="pill off">Auto</span></summary>
+        <div class="tbody"><div class="tcard">
+          <label class="switch"><input type="checkbox" id="n3-on" checked><span class="sl"></span><span>Use 3D while I navigate</span></label>
+          <div class="sub">While navigating, two buttons on the right of the map: the compass flips between <b>Heading up</b> (the map turns with you) and <b>North up</b>, and <b>3D / 2D</b> tilts the view. Needs WebGL and works inside Davidson County, where the offline map has buildings.</div>
+        </div></div></details>
+        </div>
+      </details>
+    </div>
+    <div id="status"></div>
+    <div id="lochelp" hidden><b id="lochelp-why"></b><ol id="lochelp-steps"></ol><button id="lochelp-retry" type="button">Try again</button></div>
+    <div id="alts"></div>
+    <div id="summary"></div>
+    <div id="results" hidden></div>
+    <div id="ride" aria-live="polite"></div>
+    <div id="bus">
+      <div id="bus-head"><b data-ic="bus"> Buses near <span id="bus-where">you</span></b>
+        <button id="bus-refresh" aria-label="Refresh buses" data-ic="arrows-clockwise"></button><button id="bus-close" aria-label="Close buses" data-ic="x"></button></div>
+      <div id="bus-note"></div>
+      <div id="bus-list"></div>
+      <div class="sub">Live predictions from WeGo's real-time feed, not the printed timetable. Pick a bus to board and the app will check your GPS against it to confirm you are on it.</div>
+    </div>
+    <ol id="steps"></ol>
+  </aside>
+  <div id="mapwrap">
+    <div id="map"></div>
+    <div id="map3d" hidden></div>
+    <button id="layersbtn" type="button" aria-label="Map layers" aria-expanded="false" aria-controls="layerspop" data-ic="stack"></button>
+    <div id="layerspop" hidden role="dialog" aria-label="Map layers">
+      <div class="lp-h">Map layers</div>
+      <div class="lp-sec">Map</div><div id="lp-map"></div>
+      <div class="lp-sec">On the road</div><div id="lp-road"></div>
+      <div class="lp-sec" id="lp-data-sec">Data (Davidson County)</div><div id="lp-data"></div>
+      <div class="sub" id="lp-note"></div>
+    </div>
+    </div>
+    
+    <div id="watchbar" hidden></div>
+    <div id="gpslost" role="status" hidden>No GPS right now. Your last position is shown; directions pick up again when it returns.</div>
+    <div id="navtop"><div id="nav-ic" data-ic="arrow-up"></div><div><div id="nav-dist">--</div><div id="nav-txt"></div><div id="nav-then"></div></div></div>
+    <div id="navbot"><div><b id="nb-eta"></b><span id="nb-rest"></span></div>
+      <div class="nbtns"><button id="nb-mute" title="Voice guidance" aria-label="Voice guidance" data-ic="speaker-high"></button><button id="nb-rec" style="display:none" data-ic="crosshair-simple"> Recenter</button><button id="nb-save" style="display:none" data-ic="star"> Save place</button><button id="nb-end">End</button></div></div>
+  </div>
+</div>
+
+<div id="crop" hidden role="dialog" aria-label="Cut out a sprite">
+  <div class="cbox">
+    <div class="ch"><b>Cut out your sprite</b><button type="button" id="c-x" aria-label="Close" data-ic="x"></button></div>
+    <div class="sub">Drag a box around the one sprite you want. To clear a solid background, tick the box and tap the background colour.</div>
+    <div id="c-stage"><canvas id="c-cv"></canvas></div>
+    <label class="switch"><input type="checkbox" id="c-bg"><span class="sl"></span><span>Remove background colour</span></label>
+    <label class="switch"><input type="checkbox" id="c-rot"><span class="sl"></span><span>Sprite points up (turn it with my direction)</span></label>
+    <div class="row"><button type="button" id="c-whole">Use whole picture</button><button type="button" id="c-use" class="primary">Use selection</button></div>
+  </div>
+</div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="vendor/phosphor/icons.js"></script>
+<script src="vendor/protomaps-leaflet/protomaps-leaflet.js"></script>
+<script src="quiet.js"></script>
+<script src="app.js"></script>
+<script src="datalayers.js"></script>
+<script src="nav3d.js"></script>
+<script src="people.js"></script>
+<script src="vault.js"></script>
+<script src="pwa.js"></script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wayfinder for Android</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#16202a; --mut:#5b6b7a; --line:#dde3ea; --acc:#0b6bcb; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#10161d; --card:#18212b; --ink:#e8eef4; --mut:#9aabbb; --line:#2b3947; --acc:#6cb0ff; } }
+  * { box-sizing:border-box } body { margin:0; font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif; background:var(--bg); color:var(--ink) }
+  main { max-width:640px; margin:0 auto; padding:28px 16px 60px } h1 { font-size:26px; margin:0 0 6px } .sub { color:var(--mut); font-size:14px }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px; margin:18px 0 }
+  a.dl { display:block; text-align:center; background:var(--acc); color:#fff; font-weight:700; font-size:18px; text-decoration:none; padding:16px; border-radius:14px }
+  ol { padding-left:20px } li { margin:6px 0 } code { background:var(--bg); padding:1px 6px; border-radius:6px; word-break:break-all } .mono { font-family:ui-monospace,Menlo,monospace; font-size:12px; word-break:break-all }
+  h2 { font-size:17px; margin:0 0 8px }
+</style></head><body><main>
+<h1>Wayfinder for Android</h1>
+<div class="sub">Maps, turn-by-turn directions, bus times and live location sharing. No Google services, no ads, no account needed. Works on GrapheneOS.</div>
+
+<div class="card">
+  <a class="dl" id="dl" href="https://github.com/clovenbradshaw-ctrl/wayfinder-app/releases/latest/download/Wayfinder.apk">Download the Android app (APK)</a>
+  <div class="sub" id="meta" style="margin-top:10px;text-align:center">Checking the latest version&hellip;</div>
+</div>
+
+<div class="card">
+  <h2>Install it</h2>
+  <ol>
+    <li>Tap the button above. Your phone saves <code>Wayfinder.apk</code>.</li>
+    <li>Open it from your downloads. Your phone asks to allow installing from this source (Vanadium, Chrome or Files). Allow it for this one install.</li>
+    <li>Tap <b>Install</b>, then <b>Open</b>. Allow location when asked: choose <b>While using the app</b> and <b>Precise</b>.</li>
+  </ol>
+  <div class="sub"><b>GrapheneOS:</b> Settings &rarr; Apps &rarr; (your browser or Files) &rarr; Install unknown apps &rarr; allow. Turn it off again afterwards if you like. The app has no Google code in it.</div>
+</div>
+
+<div class="card">
+  <h2>Check it is the real file</h2>
+  <div class="sub">The SHA-256 of the file you downloaded should match:</div>
+  <div class="mono" id="sha">loading&hellip;</div>
+  <div class="sub" style="margin-top:8px">Phones: arm64 and 32-bit ARM (almost every Android phone since 2014). Needs Android 8 or newer. Updates install over the old version when signed with the same key; if your phone refuses an update, uninstall once and install again.</div>
+</div>
+
+<div class="card sub">
+  <b>Spoken directions</b> need a text-to-speech engine. GrapheneOS ships none: install <i>RHVoice</i> or <i>eSpeak NG</i> from F-Droid, then pick it in Settings &rarr; System &rarr; Languages &rarr; Text-to-speech output.<br><br>
+  Prefer no install? <a href="./">Open the web app</a> in your browser and use &ldquo;Install app&rdquo;. The Android app adds navigation that keeps going with the screen off.
+</div>
+</main>
+<script>
+fetch('https://api.github.com/repos/clovenbradshaw-ctrl/wayfinder-app/releases/latest').then(r => r.json()).then(j => {
+  const a = (j.assets || []).find(x => x.name === 'Wayfinder.apk'); if (!a) throw 0;
+  document.getElementById('meta').textContent = (j.name || j.tag_name) + ' · ' + (a.size / 1048576).toFixed(1) + ' MB · ' + new Date(j.published_at).toLocaleDateString();
+  document.getElementById('dl').href = a.browser_download_url;
+  document.getElementById('sha').textContent = (a.digest || '').replace('sha256:', '') || 'see the release page';
+}).catch(() => { document.getElementById('meta').textContent = 'See the Releases page for the latest version.'; document.getElementById('sha').textContent = 'see the release page'; });
+</script></body></html>

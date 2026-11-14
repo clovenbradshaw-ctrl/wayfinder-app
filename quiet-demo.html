@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quiet voice demo</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#16202a; --mut:#5b6b7a; --line:#dde3ea; --acc:#0b6bcb; --ok:#188038; --bad:#c5221f; --warn:#b06000; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#10161d; --card:#18212b; --ink:#e8eef4; --mut:#9aabbb; --line:#2b3947; --acc:#6cb0ff; --ok:#6fd48a; --bad:#ff8b85; --warn:#f0b35a; } }
+  * { box-sizing:border-box } body { margin:0; font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width:980px; margin:0 auto; padding:20px 16px 60px; } h1 { font-size:24px; margin:6px 0 4px } h2 { font-size:18px; margin:0 0 4px } .sub { color:var(--mut); font-size:14px }
+  section { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin:16px 0 }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:10px 0 } button, select, input, textarea { font:inherit; color:inherit }
+  button { padding:8px 14px; border-radius:10px; border:1px solid var(--line); background:var(--card); cursor:pointer } button.p { background:var(--acc); border-color:var(--acc); color:#fff } button.on { background:var(--acc); color:#fff; border-color:var(--acc) }
+  table { width:100%; border-collapse:collapse } td, th { text-align:left; padding:8px 8px; border-top:1px solid var(--line); vertical-align:top } th { color:var(--mut); font-weight:600; font-size:13px; border-top:0 }
+  .said { font-weight:600 } .old { color:var(--mut) } .save { white-space:nowrap; color:var(--ok); font-variant-numeric:tabular-nums }
+  textarea, input[type=text], select { width:100%; padding:10px; border-radius:10px; border:1px solid var(--line); background:var(--bg) } textarea { min-height:70px }
+  .verdict { padding:10px 12px; border-radius:10px; margin-top:10px; font-weight:600 } .verdict.ok { background:rgba(24,128,56,.14); color:var(--ok) } .verdict.no { background:rgba(197,34,31,.14); color:var(--bad) }
+  .junc { display:grid; grid-template-columns:150px 1fr 140px; gap:12px; padding:12px 0; border-top:1px solid var(--line); align-items:center }
+  .bar { height:10px; border-radius:6px; background:var(--line); overflow:hidden } .bar i { display:block; height:100%; background:var(--acc); transition:width .4s }
+  .pill { display:inline-block; padding:2px 10px; border-radius:999px; font-size:13px; font-weight:700 } .full { background:rgba(197,34,31,.14); color:var(--bad) } .medium { background:rgba(176,96,0,.16); color:var(--warn) } .quiet { background:rgba(24,128,56,.14); color:var(--ok) }
+  .says div { padding:2px 0 } .says .none { color:var(--mut); font-style:italic } .tag { color:var(--mut); font-size:12px }
+  .note { font-size:13px; color:var(--mut); margin-top:8px } code { background:var(--bg); padding:1px 6px; border-radius:6px }
+  @media (max-width:700px) { .junc { grid-template-columns:1fr } }
+</style></head><body><main>
+<h1>Quiet voice</h1>
+<div class="sub">The real code from Wayfinder (<code>quiet.js</code>), running here on the real sentences Valhalla speaks on Nashville routes. Nothing on this page is mocked.</div>
+
+<section>
+  <h2>1. What gets said instead</h2>
+  <div class="sub">Each row is a real sentence from a real route. The right column is what the app speaks: only deletions of the router's own words, so it cannot invent a road.</div>
+  <div class="row">
+    <span>Wording</span><button id="w-short" class="on">Short</button><button id="w-full">Full</button>
+    <label><input type="checkbox" id="names" checked> say road names</label>
+    <input type="text" id="filter" placeholder="filter: exit, roundabout, Parks, Then..." style="max-width:280px">
+    <button id="longest">Longest first</button><span id="stat" class="sub"></span>
+  </div>
+  <table><thead><tr><th style="width:46%">Valhalla says</th><th>Wayfinder says</th><th></th></tr></thead><tbody id="rows"></tbody></table>
+</section>
+
+<section>
+  <h2>2. Try to make it hallucinate</h2>
+  <div class="sub">Pick a real sentence, then paste what a model might say. The gate is the same one that checks any model's output in the app.</div>
+  <div class="row"><select id="pick"></select></div>
+  <div id="preset" class="row"></div>
+  <textarea id="proposal"></textarea>
+  <div class="row"><button class="p" id="check">Check it</button></div>
+  <div id="verdict"></div>
+</section>
+
+<section>
+  <h2>3. Drive the same route again and again</h2>
+  <div class="sub">Three junctions on one route. Each clean drive teaches it you know the road; one lucky pass is not enough. Exits keep a safety floor. A miss after a quiet prompt sends that junction back to full.</div>
+  <div class="row"><button class="p" id="drive">Drive it again</button><button id="drive5">Drive 5 times</button><button id="miss">Drive, but miss the turn</button><button id="forget">Forget what it learned</button><span id="trips" class="sub"></span></div>
+  <div id="juncs"></div>
+  <div class="note">Familiarity is the lower end of a Wilson confidence interval over decayed passes (half-life 120 days). The safety floor is a declared rule outside the learner: exits, ramps, forks and roundabouts never drop below two prompts.</div>
+</section>
+</main>
+<script src="quiet.js"></script>
+<script>
+(async function () {
+  const Q = window.Quiet, $ = id => document.getElementById(id), esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const [words, sentences] = await Promise.all([fetch('quiet-words.json').then(r => r.json()), fetch('quiet-sentences.json').then(r => r.json())]);
+  const opts = { suffixes: new Set(words.words), ambiguous: new Set(words.ambiguousBases) }, rows = sentences.rows;
+  let style = 'short', longest = false;
+  const say = (t, o) => Q.sayNow(t, null, { ...opts, style, names: $('names').checked, ...(o || {}) });
+
+  /* 1: what gets said */
+  function paint() {
+    const f = $('filter').value.trim().toLowerCase(); let list = rows.filter(r => !f || r.text.toLowerCase().includes(f));
+    if (longest) list = list.slice().sort((a, b) => b.text.length - a.text.length);
+    let before = 0, after = 0; for (const r of rows) { before += r.text.length; after += say(r.text).length; }
+    $('stat').textContent = 'All ' + rows.length + ' real sentences: ' + Math.round(100 * (before - after) / before) + '% fewer characters spoken';
+    $('rows').innerHTML = list.slice(0, 40).map(r => { const out = say(r.text), g = Q.gate(r.text, out); return '<tr><td class="old">' + esc(r.text) + '</td><td class="said">' + esc(out) + (g.ok ? '' : ' <span class="pill full">gate refused</span>') + '</td><td class="save">' + (r.text.length > out.length ? '&minus;' + (r.text.length - out.length) : '') + '</td></tr>'; }).join('') || '<tr><td colspan="3" class="sub">No sentence matches.</td></tr>';
+  }
+  $('w-short').onclick = () => { style = 'short'; $('w-short').classList.add('on'); $('w-full').classList.remove('on'); paint(); };
+  $('w-full').onclick = () => { style = 'full'; $('w-full').classList.add('on'); $('w-short').classList.remove('on'); paint(); };
+  $('names').onchange = paint; $('filter').oninput = paint; $('longest').onclick = () => { longest = !longest; $('longest').classList.toggle('on', longest); paint(); };
+  paint();
+
+  /* 2: the gate */
+  const interesting = rows.filter(r => /Rosa L Parks|exit|Then|for a half/.test(r.text)).slice(0, 60);
+  $('pick').innerHTML = interesting.map((r, i) => '<option value="' + i + '">' + esc(r.text.slice(0, 110)) + '</option>').join('');
+  const cur = () => interesting[+$('pick').value].text;
+  function presets() {
+    const s = cur(), good = say(s, { style: 'short', names: true }), r = [];
+    r.push(['A valid shortening', good]);
+    r.push(['Invented road', s.replace(/(onto|on) .*?([.,]|$)/, '$1 Demonbreun Street$2')]);
+    r.push(['Wrong direction', /left/i.test(s) ? s.replace(/left/i, 'right') : s.replace(/right/i, 'left')]);
+    r.push(['Wrong distance', /\d+ feet/.test(s) ? s.replace(/\d+ feet/, '1500 feet') : s.replace(/a half mile|a quarter mile/, '2 miles')]);
+    r.push(['Dropped the distance', s.replace(/In [^,]+, /, '').replace(/ in (\d+ feet|a half mile|a quarter mile)/, '').replace(/ for [^.]*/, '')]);
+    r.push(['Extra word added', good.replace(/^(\w+)/, '$1 carefully')]);
+    $('preset').innerHTML = r.map((x, i) => '<button data-i="' + i + '">' + x[0] + '</button>').join('');
+    [...$('preset').children].forEach((b, i) => b.onclick = () => { $('proposal').value = r[i][1]; check(); });
+    $('proposal').value = r[1][1]; check();
+  }
+  function check() {
+    const g = Q.gate(cur(), $('proposal').value);
+    $('verdict').innerHTML = g.ok ? '<div class="verdict ok">Accepted: every word comes from the router\'s sentence, so it will be spoken.</div>'
+      : '<div class="verdict no">Refused: ' + esc(g.why) + '. The app speaks the safe wording instead:<br><span class="said">' + esc(say(cur(), { names: true })) + '</span></div>';
+  }
+  $('pick').onchange = presets; $('check').onclick = check; presets();
+
+  /* 3: learning */
+  const J = [
+    { name: 'Turn left', step: { maneuver: { type: 'turn', modifier: 'left', location: [-86.7801, 36.1545], bearing_after: 270 } }, say: d => (d ? 'In ' + d + ', ' : '') + 'Turn left onto Rosa L Parks Boulevard, U.S. 31.' },
+    { name: 'Exit ramp', step: { maneuver: { type: 'off ramp', modifier: 'slight right', location: [-86.79, 36.162], bearing_after: 10 } }, say: d => (d ? 'In ' + d + ', ' : '') + 'Take exit 2 16B onto State Route 2 55 toward International Airport.' },
+    { name: 'Turn right', step: { maneuver: { type: 'turn', modifier: 'right', location: [-86.771, 36.171], bearing_after: 90 } }, say: d => (d ? 'In ' + d + ', ' : '') + 'Turn right onto Harding Place, State Route 2 55.' },
+  ];
+  const DIST = ['a half mile', '600 feet', ''], STAGE = ['early', 'mid', 'at the turn'];
+  let trips = [], day = 0; const NOW = () => Date.UTC(2026, 10, 14) + day * 864e5;
+  function paintDrive() {
+    const st = Q.fold(trips, NOW());
+    $('trips').textContent = trips.length + ' drive' + (trips.length === 1 ? '' : 's') + ' recorded';
+    $('juncs').innerHTML = J.map(j => {
+      const L = Q.level(st, j.step), stages = Q.stagesFor(L.n), fam = Math.round(100 * L.familiarity);
+      const lines = [0, 1, 2].map(k => stages.includes(k) ? '<div>' + esc(Q.sayNow(j.say(DIST[k]), st, { ...opts, style: 'short' })) + ' <span class="tag">' + STAGE[k] + '</span></div>' : '<div class="none">(silent: ' + STAGE[k] + ' prompt skipped)</div>').join('');
+      return '<div class="junc"><div><b>' + j.name + '</b><div class="tag">floor ' + L.floor + ' prompt' + (L.floor > 1 ? 's' : '') + '</div></div><div class="says">' + lines + '</div><div><span class="pill ' + L.name + '">' + (L.vetoed ? 'full (after a miss)' : L.name) + '</span><div class="bar" style="margin-top:6px"><i style="width:' + fam + '%"></i></div><div class="tag">familiarity ' + fam + '%</div></div></div>';
+    }).join('');
+  }
+  function drive(miss) {
+    day += 1; const st = Q.fold(trips, NOW());
+    trips.push({ id: 't' + trips.length, t: NOW(), route: 'r', steps: J.map((j, i) => ({ key: Q.stepKey(j.step), man: j.step.maneuver.type, level: Q.level(st, j.step).name, style: 'short', outcome: miss && i === 0 ? 'miss' : 'ok' })) });
+    paintDrive();
+  }
+  $('drive').onclick = () => drive(false); $('drive5').onclick = () => { for (let i = 0; i < 5; i++) drive(false); }; $('miss').onclick = () => drive(true); $('forget').onclick = () => { trips = []; paintDrive(); };
+  paintDrive();
+})();
+</script></body></html>
